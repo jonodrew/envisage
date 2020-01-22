@@ -3,8 +3,8 @@
 
 # Enthought library imports.
 from apptools.preferences.ui.api import PreferencesPage
-from traits.api import Bool, Color, Int, Float, Font, Str
-from traitsui.api import View
+from traits.api import Bool, Int, Float, Str
+from traitsui.api import Color, Font, View
 
 
 class AcmePreferencesPage(PreferencesPage):
