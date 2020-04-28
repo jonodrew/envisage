@@ -10,13 +10,24 @@
 
 
 # Standard library imports.
+import warnings
 import weakref
 
 # Enthought library imports.
-from traits.api import Any, HasTraits, Instance, Str, Undefined
+from traits.api import Any, HasTraits, Instance, Property, Str, Undefined
 
 # Local imports.
 from .i_extension_registry import IExtensionRegistry
+
+
+warnings.filterwarnings(
+    "ignore",
+    message=(
+        r".*The attribute named 'trait_name' of class ExtensionPointBinding .*"
+    ),
+    category=Warning,
+    module=".*envisage.extension_point_binding.*",
+)
 
 
 class ExtensionPointBinding(HasTraits):
@@ -42,7 +53,11 @@ class ExtensionPointBinding(HasTraits):
     extension_registry = Instance(IExtensionRegistry)
 
     # The name of the trait that we are binding the extension point to.
-    trait_name = Str
+    # Deprecated, use target_name instead.
+    trait_name = Property(Str)
+
+    # The name of the trait that we are binding the extension point to.
+    target_name = Str()
 
     #### Private interface ####################################################
 
@@ -103,7 +118,7 @@ class ExtensionPointBinding(HasTraits):
         """ Dynamic trait change handler. """
 
         if not self._event_handled:
-            self._set_extensions(getattr(obj, self.trait_name))
+            self._set_extensions(getattr(obj, self.target_name))
 
         return
 
@@ -128,10 +143,10 @@ class ExtensionPointBinding(HasTraits):
         """ Wire-up trait change handlers etc. """
 
         # Listen for the object's trait being changed.
-        self.obj.on_trait_change(self._on_trait_changed, self.trait_name)
+        self.obj.on_trait_change(self._on_trait_changed, self.target_name)
 
         self.obj.on_trait_change(
-            self._on_trait_items_changed, self.trait_name + "_items"
+            self._on_trait_items_changed, self.target_name + "_items"
         )
 
         # Listen for the extension point being changed.
@@ -145,7 +160,7 @@ class ExtensionPointBinding(HasTraits):
         """ Set the object's trait to the value of the extension point. """
 
         value = self.extension_registry.get_extensions(self.extension_point_id)
-        traits = {self.trait_name: value}
+        traits = {self.target_name: value}
 
         self.obj.trait_set(trait_change_notify=notify, **traits)
 
@@ -157,7 +172,7 @@ class ExtensionPointBinding(HasTraits):
         self._set_trait(notify=False)
 
         self.obj.trait_property_changed(
-            self.trait_name + "_items", Undefined, event
+            self.target_name + "_items", Undefined, event
         )
 
         return
@@ -170,6 +185,24 @@ class ExtensionPointBinding(HasTraits):
         )
 
         return
+
+    # Deprecating trait_name
+
+    def _get_trait_name(self):
+        warnings.warn(
+            "'trait_name' on {} is deprecated. "
+            "Use 'target_name' instead.".format(type(self).__name__),
+            DeprecationWarning,
+        )
+        return self.target_name
+
+    def _set_trait_name(self, value):
+        warnings.warn(
+            "'trait_name' on {} is deprecated. "
+            "Use 'target_name' instead.".format(type(self).__name__),
+            DeprecationWarning,
+        )
+        self.target_name = value
 
 
 # Factory function for creating bindings.
@@ -192,7 +225,7 @@ def bind_extension_point(
     # the 'right' way to do it ;^).
     traits = {
         "obj": obj,
-        "trait_name": trait_name,
+        "target_name": trait_name,
         "extension_point_id": extension_point_id,
     }
 
